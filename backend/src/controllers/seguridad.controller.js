@@ -127,9 +127,100 @@ const restoreBackup = async (req, res, next) => {
   }
 };
 
+const seedExhibition = async (req, res, next) => {
+  const connection = await db.getConnection();
+  const today = new Date();
+  const iso = (date) => date.toISOString().slice(0, 10);
+  const addDays = (days) => {
+    const date = new Date(today);
+    date.setUTCDate(date.getUTCDate() + days);
+    return iso(date);
+  };
+  const names = [
+    ['Valeria', 'Paredes'], ['Andres', 'Caceres'], ['Camila', 'Ortega'], ['Fernando', 'Silva'],
+    ['Daniela', 'Reyes'], ['Marco', 'Medina'], ['Gabriela', 'Campos'], ['Sergio', 'Vega'],
+    ['Natalia', 'Aguilar'], ['Ricardo', 'Fuentes'], ['Monica', 'Soto'], ['Alonso', 'Peña'],
+    ['Fiorella', 'Mora'], ['Bruno', 'Palacios'], ['Claudia', 'Espinoza'], ['Renato', 'Valdez'],
+    ['Mariana', 'Ibarra'], ['Oscar', 'Zamora'], ['Paola', 'Miranda'], ['Hector', 'Chavez']
+  ];
+
+  try {
+    await connection.beginTransaction();
+    const summary = { activos_pagados: 0, inactivos: 0, proximos_vencer: 0, dados_baja: 0 };
+
+    for (let index = 0; index < names.length; index += 1) {
+      const number = index + 1;
+      const dni = `82${String(number).padStart(6, '0')}`;
+      const [nombre, apellido] = names[index];
+      const correo = `demo20.${String(number).padStart(2, '0')}@gym.com`;
+      const isInactive = index >= 12 && index < 16;
+      const isUpcoming = index >= 16 && index < 18;
+      const isDeactivated = index >= 18;
+      const estadoCliente = (isInactive || isDeactivated) ? 'Inactivo' : 'Activo';
+
+      const [existing] = await connection.execute('SELECT id FROM clientes WHERE dni = ?', [dni]);
+      let clienteId;
+      if (existing.length) {
+        clienteId = existing[0].id;
+        await connection.execute(
+          'UPDATE clientes SET nombre = ?, apellido = ?, nombre_completo = ?, telefono = ?, correo = ?, email = ?, estado = ?, activo = ?, fecha_baja = ? WHERE id = ?',
+          [nombre, apellido, `${nombre} ${apellido}`, `920000${String(number).padStart(3, '0')}`, correo, correo, estadoCliente, estadoCliente === 'Activo' ? 1 : 0, isDeactivated ? new Date() : null, clienteId]
+        );
+        await connection.execute('DELETE FROM pagos WHERE cliente_id = ?', [clienteId]);
+        await connection.execute('DELETE FROM membresias WHERE cliente_id = ?', [clienteId]);
+        await connection.execute('DELETE FROM clientes_bajas WHERE cliente_id = ?', [clienteId]);
+      } else {
+        const [created] = await connection.execute(
+          `INSERT INTO clientes (nombre, apellido, nombre_completo, dni, telefono, correo, email, fecha_inscripcion, estado, activo, fecha_baja)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [nombre, apellido, `${nombre} ${apellido}`, dni, `920000${String(number).padStart(3, '0')}`, correo, correo, addDays(-30 + index), estadoCliente, estadoCliente === 'Activo' ? 1 : 0, isDeactivated ? new Date() : null]
+        );
+        clienteId = created.insertId;
+      }
+
+      if (!isInactive && !isDeactivated) {
+        const endDate = isUpcoming ? addDays(index === 16 ? 2 : 5) : addDays(15 + index);
+        const [membership] = await connection.execute(
+          `INSERT INTO membresias (cliente_id, tipo, fecha_inicio, fecha_fin, fecha_vencimiento, estado, monto_pagado)
+           VALUES (?, 'mensual', ?, ?, ?, ?, 90.00)`,
+          [clienteId, addDays(-15), endDate, endDate, isUpcoming ? 'Proxima_a_vencer' : 'Activa']
+        );
+        await connection.execute(
+          `INSERT INTO pagos (cliente_id, membresia_id, monto, fecha_pago, metodo_pago, tipo_membresia, fecha_vencimiento_generada, registrado_por, observacion)
+           VALUES (?, ?, 90.00, ?, ?, 'mensual', ?, ?, 'Carga de exposicion 20 clientes')`,
+          [clienteId, membership.insertId, addDays(-(index % 12)), ['efectivo', 'yape', 'plin'][index % 3], endDate, req.user.id]
+        );
+        summary[isUpcoming ? 'proximos_vencer' : 'activos_pagados'] += 1;
+      } else if (isDeactivated) {
+        await connection.execute(
+          `INSERT INTO clientes_bajas (cliente_id, estado_anterior, estado_nuevo, motivo, registrado_por)
+           VALUES (?, 'Activo', 'Inactivo', 'Baja demostrativa para exposicion', ?)`,
+          [clienteId, req.user.id]
+        );
+        summary.dados_baja += 1;
+      } else {
+        summary.inactivos += 1;
+      }
+    }
+
+    await connection.execute(
+      'INSERT INTO auditoria (usuario_id, accion, detalle) VALUES (?, ?, ?)',
+      [req.user.id, 'SEED_EXPOSICION', JSON.stringify(summary)]
+    );
+    await connection.commit();
+    return response.success(res, { total: 20, ...summary, dni_desde: '82000001', dni_hasta: '82000020' }, 'Datos de exposicion generados correctamente.', 201);
+  } catch (err) {
+    await connection.rollback();
+    next(err);
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   listBackups,
   createBackup,
   downloadBackup,
   restoreBackup
+  ,seedExhibition
 };
