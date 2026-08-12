@@ -1,0 +1,36 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and build products
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+coverage/
+.angular/
+**/.angular/
+
+# Runtime files
+*.log
+*.pid
+*.tmp
+
+# Database exports containing personal or authentication data
+backend/backups/*.sql
+backend/test-localhost.js
+
+# Local agent/editor metadata
+.agents/
+.codex/
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

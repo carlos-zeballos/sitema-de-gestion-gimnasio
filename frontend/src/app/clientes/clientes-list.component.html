@@ -1,0 +1,425 @@
+<app-navbar></app-navbar>
+
+<div class="clientes-container">
+  <div class="header-section">
+    <div class="title-wrapper">
+      <h1>👥 Gestión de Socios</h1>
+      <p class="subtitle">Administración de membresías, fichas técnicas y renovaciones de pagos</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreateModal()">
+      ➕ Registrar Nuevo Socio
+    </button>
+  </div>
+
+  <!-- Banners de alerta -->
+  @if (successMessage()) {
+    <div class="alert alert-success animate-fade-in">
+      ✅ {{ successMessage() }}
+    </div>
+  }
+
+  <!-- Buscador y Filtros -->
+  <div class="filters-panel glass">
+    <div class="search-box">
+      <label for="buscar">Buscar por nombre o DNI</label>
+      <input 
+        type="text" 
+        id="buscar" 
+        [(ngModel)]="searchTerm" 
+        (input)="onSearch()" 
+        placeholder="Ingrese DNI o nombre..."
+        class="input-control"
+      />
+    </div>
+
+    <div class="filter-box">
+      <label for="filtrar-estado">Estado de Membresía</label>
+      <select 
+        id="filtrar-estado" 
+        [(ngModel)]="statusFilter" 
+        (change)="applyFilter()" 
+        class="input-control select-control"
+      >
+        <option value="all">Todos los estados</option>
+        <option value="activa">Activos (Vigentes)</option>
+        <option value="proxima">Proximas a vencer</option>
+        <option value="vencida">Membresías Vencidas</option>
+        <option value="sin-membresia">Sin Membresía registrada</option>
+      </select>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Cargando información de socios...</p>
+    </div>
+  } @else {
+    <!-- Tabla de Socios -->
+    <div class="card glass table-card">
+      <div class="scroll-table-container">
+        <table class="clientes-table">
+          <thead>
+            <tr>
+              <th>Socio</th>
+              <th>DNI</th>
+              <th>Contacto</th>
+              <th>Estado Membresía</th>
+              <th>Fecha Inscripción</th>
+              <th class="actions-header">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (cli of filteredClientes(); track cli.id) {
+              <tr>
+                <td class="bold-td">{{ cli.nombre }} {{ cli.apellido }}</td>
+                <td>{{ cli.dni }}</td>
+                <td>
+                  <div class="contact-details">
+                    <span class="phone" *ngIf="cli.telefono">📞 {{ cli.telefono }}</span>
+                    <span class="email" *ngIf="cli.email">📧 {{ cli.email }}</span>
+                    <span class="text-muted" *ngIf="!cli.telefono && !cli.email">-</span>
+                  </div>
+                </td>
+                <td>
+                  @if (cli.membresia_estado === 'Activa') {
+                    <span class="status-badge allowed-badge" title="Inicio: {{cli.membresia_inicio}}">
+                      🟢 ACTIVA (hasta {{ cli.membresia_fin }})
+                    </span>
+                  } @else if (cli.membresia_estado === 'Proxima_a_vencer') {
+                    <span class="status-badge pending-badge">
+                      PROXIMA A VENCER ({{ cli.membresia_fin }})
+                    </span>
+                  } @else if (cli.membresia_estado === 'Vencida') {
+                    <span class="status-badge denied-badge">
+                      🔴 VENCIDA (el {{ cli.membresia_fin }})
+                    </span>
+                  } @else {
+                    <span class="status-badge pending-badge">
+                      ⚪ SIN PLAN
+                    </span>
+                  }
+                </td>
+                <td class="text-muted">{{ cli.fecha_inscripcion }}</td>
+                <td>
+                  <div class="actions-cell">
+                    <button class="btn btn-action btn-info-action" (click)="openDetailModal(cli)" title="Ver Ficha y Movimientos">
+                      👁️ Ficha
+                    </button>
+                    <button class="btn btn-action btn-pay-action" (click)="openRenewModal(cli)" title="Registrar Pago / Renovación">
+                      💰 Cobrar
+                    </button>
+                    <button class="btn btn-action btn-edit-action" (click)="openEditModal(cli)" title="Editar datos del Socio">
+                      ✏️ Editar
+                    </button>
+                    @if (currentUser()?.rol === 'admin') {
+                      <button class="btn btn-action btn-delete-action" (click)="deleteCliente(cli)" title="Dar de baja en el sistema">
+                        🗑️ Baja
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-table-text">No se encontraron socios con los filtros aplicados.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ================================================================= -->
+  <!-- MODAL: REGISTRAR NUEVO CLIENTE -->
+  <!-- ================================================================= -->
+  @if (showCreateModal) {
+    <div class="modal-overlay glass-modal animate-fade-in">
+      <div class="modal-card animate-zoom-in">
+        <div class="modal-header">
+          <h2>👤 Registrar Nuevo Socio</h2>
+          <button class="btn-close" (click)="showCreateModal = false">✖</button>
+        </div>
+        <div class="modal-body">
+          @if (errorMessage()) {
+            <div class="alert alert-danger animate-shake">⚠️ {{ errorMessage() }}</div>
+          }
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="c-nombre">Nombres <span class="required">*</span></label>
+              <input type="text" id="c-nombre" [(ngModel)]="clientForm.nombre" class="input-control" placeholder="Nombres del socio" />
+            </div>
+            <div class="form-group">
+              <label for="c-apellido">Apellidos <span class="required">*</span></label>
+              <input type="text" id="c-apellido" [(ngModel)]="clientForm.apellido" class="input-control" placeholder="Apellidos del socio" />
+            </div>
+            <div class="form-group">
+              <label for="c-dni">DNI (8 dígitos) <span class="required">*</span></label>
+              <input type="text" id="c-dni" maxlength="8" [(ngModel)]="clientForm.dni" class="input-control" placeholder="DNI del socio" />
+            </div>
+            <div class="form-group">
+              <label for="c-telefono">Teléfono</label>
+              <input type="text" id="c-telefono" [(ngModel)]="clientForm.telefono" class="input-control" placeholder="Ej. 958473621" />
+            </div>
+            <div class="form-group full-width">
+              <label for="c-email">Correo Electrónico</label>
+              <input type="email" id="c-email" [(ngModel)]="clientForm.email" class="input-control" placeholder="ejemplo@correo.com" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="showCreateModal = false">Cancelar</button>
+          <button class="btn btn-primary" (click)="saveNewCliente()" [disabled]="isLoading()">
+            Guardar Socio
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ================================================================= -->
+  <!-- MODAL: EDITAR CLIENTE -->
+  <!-- ================================================================= -->
+  @if (showEditModal) {
+    <div class="modal-overlay glass-modal animate-fade-in">
+      <div class="modal-card animate-zoom-in">
+        <div class="modal-header">
+          <h2>✏️ Editar Datos del Socio</h2>
+          <button class="btn-close" (click)="showEditModal = false">✖</button>
+        </div>
+        <div class="modal-body">
+          @if (errorMessage()) {
+            <div class="alert alert-danger animate-shake">⚠️ {{ errorMessage() }}</div>
+          }
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="e-nombre">Nombres <span class="required">*</span></label>
+              <input type="text" id="e-nombre" [(ngModel)]="clientForm.nombre" class="input-control" />
+            </div>
+            <div class="form-group">
+              <label for="e-apellido">Apellidos <span class="required">*</span></label>
+              <input type="text" id="e-apellido" [(ngModel)]="clientForm.apellido" class="input-control" />
+            </div>
+            <div class="form-group">
+              <label for="e-dni">DNI (No editable)</label>
+              <input type="text" id="e-dni" [(ngModel)]="clientForm.dni" class="input-control input-disabled" disabled />
+            </div>
+            <div class="form-group">
+              <label for="e-telefono">Teléfono</label>
+              <input type="text" id="e-telefono" [(ngModel)]="clientForm.telefono" class="input-control" />
+            </div>
+            <div class="form-group full-width">
+              <label for="e-email">Correo Electrónico</label>
+              <input type="email" id="e-email" [(ngModel)]="clientForm.email" class="input-control" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="showEditModal = false">Cancelar</button>
+          <button class="btn btn-primary" (click)="saveEditCliente()" [disabled]="isLoading()">
+            Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ================================================================= -->
+  <!-- MODAL: RENOVAR MEMBRESÍA / REGISTRAR PAGO -->
+  <!-- ================================================================= -->
+  @if (showRenewModal) {
+    <div class="modal-overlay glass-modal animate-fade-in">
+      <div class="modal-card animate-zoom-in">
+        <div class="modal-header">
+          <h2>💰 Cobro y Activación de Membresía</h2>
+          <button class="btn-close" (click)="showRenewModal = false">✖</button>
+        </div>
+        <div class="modal-body" *ngIf="selectedCliente">
+          <div class="client-summary">
+            <p>Cobro para el socio: <strong>{{ selectedCliente.nombre }} {{ selectedCliente.apellido }}</strong></p>
+            <p>DNI: <strong>{{ selectedCliente.dni }}</strong></p>
+          </div>
+
+          @if (errorMessage()) {
+            <div class="alert alert-danger animate-shake">⚠️ {{ errorMessage() }}</div>
+          }
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="r-plan">Plan a Contratar</label>
+              <select 
+                id="r-plan" 
+                [(ngModel)]="renewForm.tipo_membresia" 
+                (change)="onRenewMembresiaChange()"
+                class="input-control select-control"
+              >
+                <option value="semanal">Semanal (S/. 30.00)</option>
+                <option value="quincenal">Quincenal (S/. 50.00)</option>
+                <option value="mensual">Mensual (S/. 90.00)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="r-monto">Monto Cobrado (S/.) <span class="required">*</span></label>
+              <input type="number" id="r-monto" [(ngModel)]="renewForm.monto" class="input-control" />
+            </div>
+
+            <div class="form-group">
+              <label for="r-metodo">Método de Pago</label>
+              <select id="r-metodo" [(ngModel)]="renewForm.metodo_pago" class="input-control select-control">
+                <option value="yape">Yape</option>
+                <option value="plin">Plin</option>
+                <option value="efectivo">Efectivo (Presencial)</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="r-obs">Observaciones / Notas de Pago</label>
+              <textarea 
+                id="r-obs" 
+                [(ngModel)]="renewForm.observacion" 
+                rows="2" 
+                placeholder="Ej. Transacción Yape #948573, pago en efectivo caja principal..." 
+                class="input-control textarea-control"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="showRenewModal = false">Cancelar</button>
+          <button class="btn btn-primary" (click)="saveRenew()" [disabled]="isLoading()">
+            Registrar Pago y Activar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ================================================================= -->
+  <!-- MODAL: FICHA DE SOCIO Y HISTORIAL -->
+  <!-- ================================================================= -->
+  @if (showDetailModal) {
+    <div class="modal-overlay glass-modal animate-fade-in">
+      <div class="modal-card modal-large animate-zoom-in">
+        <div class="modal-header">
+          <h2>👤 Ficha Técnica del Socio</h2>
+          <button class="btn-close" (click)="showDetailModal = false">✖</button>
+        </div>
+        <div class="modal-body" *ngIf="selectedCliente">
+          
+          <!-- Información Básica -->
+          <div class="ficha-personal-grid">
+            <div class="ficha-avatar">
+              {{ selectedCliente.nombre.charAt(0).toUpperCase() }}
+            </div>
+            <div class="ficha-details">
+              <h3>{{ selectedCliente.nombre }} {{ selectedCliente.apellido }}</h3>
+              <div class="ficha-fields">
+                <p><strong>DNI:</strong> {{ selectedCliente.dni }}</p>
+                <p><strong>Teléfono:</strong> {{ selectedCliente.telefono || 'No registrado' }}</p>
+                <p><strong>Correo:</strong> {{ selectedCliente.email || 'No registrado' }}</p>
+                <p><strong>Miembro desde:</strong> {{ selectedCliente.fecha_inscripcion }}</p>
+              </div>
+            </div>
+            <div class="ficha-status-panel">
+              <p class="status-label">Estado de Acceso</p>
+              @if (selectedCliente.membresia_estado === 'Activa' || selectedCliente.membresia_estado === 'Proxima_a_vencer') {
+                <div class="status-box active-box">
+                  <span class="status-icon">✔</span>
+                  <span class="status-text">MEMBRESÍA ACTIVA</span>
+                  <span class="status-sub">Vence el {{ selectedCliente.membresia_fin }}</span>
+                </div>
+              } @else {
+                <div class="status-box expired-box">
+                  <span class="status-icon">✖</span>
+                  <span class="status-text">MEMBRESÍA EXPIRADA</span>
+                  <span class="status-sub">{{ selectedCliente.membresia_fin ? 'Venció el ' + selectedCliente.membresia_fin : 'Sin historial de planes' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Historiales en Tabs/Columnas -->
+          <div class="ficha-tables-row">
+            <!-- Historial de Pagos -->
+            <div class="ficha-table-wrapper">
+              <h4>💰 Historial de Pagos (Renovaciones)</h4>
+              <div class="tab-table-container">
+                <table class="ficha-inner-table">
+                  <thead>
+                    <tr>
+                      <th>Plan</th>
+                      <th>Monto</th>
+                      <th>Fecha Pago</th>
+                      <th>Método</th>
+                      <th>Registrado por</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pago of clientPagos(); track pago.id) {
+                      <tr>
+                        <td><span class="plan-badge">{{ pago.membresia_tipo | titlecase }}</span></td>
+                        <td class="amount-td">S/. {{ pago.monto | number: '1.2-2' }}</td>
+                        <td>{{ pago.fecha_pago }}</td>
+                        <td><span class="method-badge" [class]="pago.metodo_pago">{{ pago.metodo_pago | uppercase }}</span></td>
+                        <td class="text-muted">{{ pago.registrado_por_nombre || 'Sistema' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="empty-table-text">No hay registros de transacciones.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Historial de Asistencias -->
+            <div class="ficha-table-wrapper">
+              <h4>🚪 Historial de Accesos / Asistencia</h4>
+              <div class="tab-table-container">
+                <table class="ficha-inner-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha y Hora</th>
+                      <th>Acceso</th>
+                      <th>Registrado por</th>
+                      <th>Nota / Observación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (asist of clientAsistencias(); track asist.id) {
+                      <tr>
+                        <td>{{ asist.fecha_hora | date: 'short' }}</td>
+                        <td>
+                          <span class="status-badge" [class.allowed-badge]="asist.acceso_concedido" [class.denied-badge]="!asist.acceso_concedido">
+                            {{ asist.acceso_concedido ? 'PERMITIDO' : 'DENEGADO' }}
+                          </span>
+                        </td>
+                        <td class="text-muted">{{ asist.registrado_por_nombre || 'Portería' }}</td>
+                        <td class="text-muted note-cell" [title]="asist.observacion || ''">
+                          {{ asist.observacion || '-' }}
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4" class="empty-table-text">No se registran asistencias en portería.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="showDetailModal = false">Cerrar Ficha</button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

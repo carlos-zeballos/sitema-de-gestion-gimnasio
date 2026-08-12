@@ -1,0 +1,158 @@
+<app-navbar></app-navbar>
+
+<div class="access-control-container">
+  <div class="header-section">
+    <p class="subtitle">Módulo de Recepción — Control de Accesos en Tiempo Real</p>
+  </div>
+
+  <div class="content-grid">
+    <!-- Panel Izquierdo: Buscador y Selección -->
+    <div class="card glass search-card">
+      <div class="card-header">
+        <h2>🔍 Búsqueda de Miembro</h2>
+        <span class="badge">Recepción</span>
+      </div>
+      
+      <div class="card-body">
+        <div class="form-group search-box">
+          <label for="buscar">Buscar por DNI o Nombre Completo</label>
+          <input 
+            type="text" 
+            id="buscar" 
+            [(ngModel)]="searchTerm" 
+            (input)="buscarClientes()" 
+            placeholder="Ingrese DNI o nombre..."
+            autocomplete="off"
+            class="input-control"
+            [disabled]="clienteSeleccionado() !== null"
+          />
+          
+          <!-- Lista de Sugerencias en Tiempo Real -->
+          @if (resultadosBusqueda().length > 0) {
+            <ul class="suggestions-list">
+              @for (cli of resultadosBusqueda(); track cli.id) {
+                <li (click)="seleccionarCliente(cli)">
+                  <div class="cli-info">
+                    <span class="cli-name">{{ cli.nombre }} {{ cli.apellido }}</span>
+                    <span class="cli-dni">DNI: {{ cli.dni }}</span>
+                  </div>
+                  <span class="cli-membership-badge" [class]="cli.membresia_estado">
+                    {{ cli.membresia_estado ? cli.membresia_estado.toUpperCase() : 'SIN MEMBRESÍA' }}
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <!-- Detalles del Cliente Seleccionado -->
+        @if (clienteSeleccionado(); as client) {
+          <div class="selected-client-panel animate-fade-in">
+            <h3>Ficha de Miembro Seleccionado</h3>
+            
+            <div class="client-details">
+              <div class="detail-row">
+                <span class="label">Nombres:</span>
+                <span class="value">{{ client.nombre }} {{ client.apellido }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">DNI:</span>
+                <span class="value">{{ client.dni }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Último Plan:</span>
+                <span class="value">{{ client.membresia_tipo ? (client.membresia_tipo | titlecase) : 'Ninguno' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Vencimiento:</span>
+                <span class="value date-val" [class.danger-text]="client.membresia_estado === 'Vencida' || !client.membresia_estado">
+                  {{ client.membresia_fin ? client.membresia_fin : 'No Registrado' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="observacion">Nota / Observación de Ingreso (Opcional)</label>
+              <textarea 
+                id="observacion" 
+                [(ngModel)]="observacion" 
+                rows="2" 
+                placeholder="Ej. Ingresa con bolso deportivo, entrenamiento funcional..." 
+                class="input-control textarea-control"
+              ></textarea>
+            </div>
+
+            <div class="actions-panel">
+              <button class="btn btn-secondary" (click)="limpiar()">Cancelar</button>
+              <button class="btn btn-primary" (click)="procesarIngreso()" [disabled]="isLoading()">
+                @if (isLoading()) {
+                  <span>Procesando...</span>
+                } @else {
+                  <span>Validar & Registrar Ingreso</span>
+                }
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="empty-state">
+            <div class="icon-placeholder">👤</div>
+            <p>Busque y seleccione un miembro para validar su ingreso.</p>
+          </div>
+        }
+
+        @if (errorMessage()) {
+          <div class="alert alert-danger animate-shake">
+            ⚠️ {{ errorMessage() }}
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Panel Derecho: Visualizador de Accesos / Banner Gigante -->
+    <div class="card glass display-card">
+      <div class="card-header">
+        <h2>🟢 Monitor de Pantalla Gigante</h2>
+        <span class="live-indicator"><span class="dot"></span> EN VIVO</span>
+      </div>
+      
+      <div class="card-body display-body">
+        @if (resultadoAcceso(); as res) {
+          <div class="huge-banner-alert animate-bounce-in" [class.allowed]="res.permitido" [class.denied]="!res.permitido">
+            <div class="status-circle">
+              {{ res.permitido ? '✔' : '✖' }}
+            </div>
+            
+            <h2 class="banner-title">{{ res.mensaje }}</h2>
+            
+            <div class="banner-client-details">
+              <p class="banner-client-name">{{ res.cliente.nombre }} {{ res.cliente.apellido }}</p>
+              <p class="banner-client-dni">DNI: {{ res.cliente.dni }}</p>
+              
+              <div class="banner-membership-status">
+                <p>Membresía: 
+                  <strong class="estado-text">{{ res.cliente.membresia_estado ? res.cliente.membresia_estado.toUpperCase() : 'VENCIDA/INEXISTENTE' }}</strong>
+                </p>
+                @if (res.cliente.membresia_fin) {
+                  <p>Fecha de Vencimiento: <strong>{{ res.cliente.membresia_fin }}</strong></p>
+                }
+              </div>
+            </div>
+
+            <div class="banner-footer">
+              <button class="btn btn-banner" (click)="limpiar()">Siguiente Registro</button>
+            </div>
+          </div>
+        } @else {
+          <div class="display-idle">
+            <div class="idle-graphic">
+              <div class="pulse-ring"></div>
+              <div class="scanner-laser"></div>
+              <span class="laser-label">ESPERANDO INGRESO</span>
+            </div>
+            <p class="idle-text">Los resultados de validación de acceso se proyectarán en esta pantalla con alertas visuales de gran impacto y señales auditivas.</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

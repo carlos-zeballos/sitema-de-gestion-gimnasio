@@ -1,0 +1,103 @@
+<app-navbar></app-navbar>
+
+<main class="page">
+  <section class="toolbar">
+    <div>
+      <h1>Gestion de Usuarios</h1>
+      <p>Administra accesos, roles y estado del personal.</p>
+    </div>
+    <button class="btn ghost" (click)="cancel()">Nuevo</button>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="alert danger">{{ errorMessage() }}</div>
+  }
+  @if (successMessage()) {
+    <div class="alert success">{{ successMessage() }}</div>
+  }
+
+  <section class="layout">
+    <form class="panel form" (ngSubmit)="save()" #userForm="ngForm">
+      <h2>{{ editingId ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+
+      <label>
+        Nombre
+        <input name="nombre" [(ngModel)]="form.nombre" required />
+      </label>
+
+      <label>
+        Usuario
+        <input name="username" [(ngModel)]="form.username" required maxlength="8" />
+      </label>
+
+      <label>
+        Correo
+        <input name="correo" type="email" [(ngModel)]="form.correo" required />
+      </label>
+
+      <label>
+        Rol
+        <select name="rol_id" [(ngModel)]="form.rol_id" required>
+          @for (rol of roles(); track rol.id) {
+            <option [ngValue]="rol.id">{{ rol.nombre_rol }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        Estado
+        <select name="estado" [(ngModel)]="form.estado" required>
+          <option value="Activo">Activo</option>
+          <option value="Inactivo">Inactivo</option>
+        </select>
+      </label>
+
+      <label>
+        {{ editingId ? 'Nueva contrasena (opcional)' : 'Contrasena inicial' }}
+        <input name="password" type="password" [(ngModel)]="form.password" [required]="!editingId" minlength="6" />
+      </label>
+
+      <div class="actions">
+        <button type="button" class="btn secondary" (click)="cancel()">Cancelar</button>
+        <button class="btn primary" [disabled]="isLoading() || userForm.invalid">Guardar</button>
+      </div>
+    </form>
+
+    <section class="panel table-panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Ultimo login</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (usuario of usuarios(); track usuario.id) {
+            <tr>
+              <td>
+                <strong>{{ usuario.nombre }}</strong>
+                <span>{{ usuario.username }}</span>
+              </td>
+              <td>{{ usuario.correo }}</td>
+              <td>{{ usuario.nombre_rol }}</td>
+              <td><span class="badge" [class.off]="usuario.estado === 'Inactivo'">{{ usuario.estado }}</span></td>
+              <td>{{ usuario.ultimo_login || '-' }}</td>
+              <td class="row-actions">
+                <button class="btn small" (click)="edit(usuario)">Editar</button>
+                <button class="btn small danger-btn" (click)="deactivate(usuario)" [disabled]="usuario.estado === 'Inactivo'">Desactivar</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="empty">No hay usuarios registrados.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  </section>
+</main>

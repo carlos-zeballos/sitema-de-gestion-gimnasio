@@ -1,0 +1,74 @@
+<div class="login-container">
+  <div class="login-split-wrapper">
+    <div class="login-brand-panel">
+      <div class="brand-panel-overlay"></div>
+      <div class="brand-info-content animate-fade-in">
+        <img src="assets/logogym.jpg" alt="Logo Gimnasio GD Madrid" class="logo-hero-image" />
+        <h1 class="brand-title">GIMNASIO GD MADRID</h1>
+        <p class="brand-subtitle">Arequipa, Peru</p>
+        <p class="brand-address">Av. Victor Andres Belaunde #409 - Umacollo</p>
+      </div>
+    </div>
+
+    <div class="login-form-panel">
+      <div class="login-card glass animate-fade-in">
+        <div class="login-header">
+          <h2>Iniciar Sesion</h2>
+          <p>CRM GD Madrid - Control de Accesos y Caja</p>
+        </div>
+
+        <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="login-form">
+          <div class="form-group">
+            <label for="username">Nombre de usuario</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              [(ngModel)]="username"
+              required
+              maxlength="8"
+              placeholder="admin"
+              class="input-control"
+              autocomplete="username"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Contrasena</label>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              id="password"
+              name="password"
+              [(ngModel)]="password"
+              required
+              placeholder="********"
+              class="input-control"
+              autocomplete="current-password"
+            />
+            <button type="button" class="btn btn-secondary" (click)="showPassword = !showPassword">
+              {{ showPassword ? 'Ocultar' : 'Mostrar' }}
+            </button>
+          </div>
+
+          @if (errorMessage()) {
+            <div class="alert alert-danger animate-shake">
+              {{ errorMessage() }}
+            </div>
+          }
+
+          <button type="submit" class="btn btn-primary btn-block" [disabled]="isLoading() || !loginForm.form.valid">
+            @if (isLoading()) {
+              <span>Autenticando...</span>
+            } @else {
+              <span>Ingresar</span>
+            }
+          </button>
+        </form>
+
+        <div class="login-footer">
+          <p>CRM Corporativo v1.0 - GD Madrid S.A.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

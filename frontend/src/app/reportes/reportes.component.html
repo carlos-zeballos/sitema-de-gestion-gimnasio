@@ -1,0 +1,154 @@
+<app-navbar></app-navbar>
+
+<main class="page">
+  <section class="toolbar no-print">
+    <div>
+      <h1>Reportes</h1>
+      <p>Ingresos, retencion e impresion para revision gerencial.</p>
+    </div>
+    <button class="btn secondary" (click)="print()" [disabled]="activeTab === 'ingresos' ? !ingresos() : !retencion()">Imprimir reporte</button>
+  </section>
+
+  <section class="filters no-print">
+    <div class="tabs">
+      <button class="tab" [class.active]="activeTab === 'ingresos'" (click)="activeTab = 'ingresos'">Ingresos</button>
+      <button class="tab" [class.active]="activeTab === 'retencion'" (click)="activeTab = 'retencion'">Retencion</button>
+    </div>
+
+    <label>
+      Mes
+      <select [(ngModel)]="mes">
+        @for (item of meses; track item.value) {
+          <option [ngValue]="item.value">{{ item.label }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      Anio
+      <input type="number" [(ngModel)]="anio" min="2020" max="2100" />
+    </label>
+
+    <button class="btn primary" (click)="generar()" [disabled]="isLoading()">Generar reporte</button>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="alert danger no-print">{{ errorMessage() }}</div>
+  }
+
+  @if (activeTab === 'ingresos') {
+    <section class="report">
+      @if (ingresos(); as data) {
+        <header class="print-header">
+          <h2>{{ data.gimnasio }}</h2>
+          <p>{{ data.titulo }} - Periodo {{ data.periodo }}</p>
+          <p>Generado: {{ data.generado_en | date:'medium' }}</p>
+        </header>
+
+        <div class="summary-grid">
+          <article>
+            <span>Total de pagos</span>
+            <strong>{{ data.total_pagos }}</strong>
+          </article>
+          <article>
+            <span>Ingresos totales</span>
+            <strong>S/. {{ data.monto_total | number:'1.2-2' }}</strong>
+          </article>
+        </div>
+
+        @if (data.desglose.length === 0) {
+          <p class="empty">No hay ingresos registrados para el periodo seleccionado.</p>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Cantidad de ventas</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of data.desglose; track row.tipo) {
+                <tr>
+                  <td>{{ row.tipo | titlecase }}</td>
+                  <td>{{ row.cantidad }}</td>
+                  <td>S/. {{ row.subtotal | number:'1.2-2' }}</td>
+                </tr>
+              }
+              <tr class="total">
+                <td>Total</td>
+                <td>{{ data.total_pagos }}</td>
+                <td>S/. {{ data.monto_total | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        }
+      } @else {
+        <p class="empty">Selecciona mes y anio para generar el reporte.</p>
+      }
+    </section>
+  }
+
+  @if (activeTab === 'retencion') {
+    <section class="report">
+      @if (retencion(); as data) {
+        <header class="print-header">
+          <h2>{{ data.gimnasio }}</h2>
+          <p>{{ data.titulo }} - Periodo {{ data.periodo }}</p>
+          <p>Generado: {{ data.generado_en | date:'medium' }}</p>
+        </header>
+
+        <div class="summary-grid">
+          <article>
+            <span>Total historico</span>
+            <strong>{{ data.total_clientes }}</strong>
+          </article>
+          <article>
+            <span>Activos</span>
+            <strong>{{ data.activos }}</strong>
+          </article>
+          <article>
+            <span>Inactivos</span>
+            <strong>{{ data.inactivos }}</strong>
+          </article>
+          <article>
+            <span>Retencion</span>
+            <strong>{{ data.porcentaje_retencion }}%</strong>
+          </article>
+        </div>
+
+        <div class="chart" role="img" aria-label="Grafico de retencion">
+          <div class="donut" [style.--active]="data.porcentaje_retencion + '%'"></div>
+          <p>{{ data.formula }}</p>
+        </div>
+
+        @if (data.clientes_inactivos.length === 0) {
+          <p class="empty">No se registraron clientes inactivos en este periodo.</p>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre completo</th>
+                <th>DNI</th>
+                <th>Telefono</th>
+                <th>Ultimo pago</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cliente of data.clientes_inactivos; track cliente.id) {
+                <tr>
+                  <td>{{ cliente.nombre_completo }}</td>
+                  <td>{{ cliente.dni }}</td>
+                  <td>{{ cliente.telefono || '-' }}</td>
+                  <td>{{ cliente.ultimo_pago }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      } @else {
+        <p class="empty">Selecciona mes y anio para generar el reporte.</p>
+      }
+    </section>
+  }
+</main>

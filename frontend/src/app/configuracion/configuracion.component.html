@@ -1,0 +1,58 @@
+<app-navbar></app-navbar>
+
+<main class="page">
+  <section class="toolbar">
+    <div>
+      <h1>Configuracion</h1>
+      <p>Backups, restauracion y controles administrativos.</p>
+    </div>
+    <button class="btn primary" (click)="createBackup()" [disabled]="isLoading()">Generar backup</button>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="alert danger">{{ errorMessage() }}</div>
+  }
+  @if (successMessage()) {
+    <div class="alert success">{{ successMessage() }}</div>
+  }
+
+  <section class="panel">
+    <div class="restore">
+      <label>
+        Backup para restaurar
+        <select [(ngModel)]="selectedFile">
+          <option value="">Seleccionar archivo</option>
+          @for (backup of backups(); track backup.file) {
+            <option [value]="backup.file">{{ backup.file }}</option>
+          }
+        </select>
+      </label>
+      <button class="btn danger-btn" (click)="restore()" [disabled]="isLoading() || !selectedFile">Restaurar</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Archivo</th>
+          <th>Tamano</th>
+          <th>Creado</th>
+          <th>Accion</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (backup of backups(); track backup.file) {
+          <tr>
+            <td>{{ backup.file }}</td>
+            <td>{{ backup.size | number }} bytes</td>
+            <td>{{ backup.creado_en | date:'medium' }}</td>
+            <td><button class="btn small" (click)="download(backup.file)">Descargar</button></td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="4" class="empty">Aun no hay backups generados.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+</main>

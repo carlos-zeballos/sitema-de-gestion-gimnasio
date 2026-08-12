@@ -1,0 +1,224 @@
+<app-navbar></app-navbar>
+
+<div class="dashboard-container">
+  <div class="header-section">
+    <h1>📈 Panel de Control Administrativo</h1>
+    <p class="subtitle">DG Madrid S.A. — Análisis estadístico y auditoría académica en tiempo real</p>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Procesando estadísticas y reportes de la base de datos...</p>
+    </div>
+  } @else {
+    <!-- KPIs Grid -->
+    <div class="kpi-grid">
+      @for (kpi of kpis(); track kpi.title) {
+        <div class="card glass kpi-card" [class]="'kpi-' + kpi.type">
+          <div class="kpi-header">
+            <span class="kpi-title">{{ kpi.title }}</span>
+            <span class="kpi-icon">{{ kpi.icon }}</span>
+          </div>
+          <div class="kpi-value">{{ kpi.value }}</div>
+          <p class="kpi-desc">{{ kpi.description }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-row">
+      <!-- Chart 1: Revenue Trends -->
+      <div class="card glass chart-card">
+        <div class="card-header">
+          <h3>📊 Tendencia de Ingresos Mensuales</h3>
+          <span class="badge">S/. Soles</span>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <!-- SVG Line Chart -->
+            <svg class="svg-chart" viewBox="0 0 500 220">
+              <!-- Grid Lines -->
+              <line x1="40" y1="20" x2="480" y2="20" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+              <line x1="40" y1="70" x2="480" y2="70" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+              <line x1="40" y1="120" x2="480" y2="120" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+              <line x1="40" y1="170" x2="480" y2="170" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+              
+              <!-- Labels Y -->
+              <text x="30" y="25" class="chart-text" text-anchor="end">S/. 8k</text>
+              <text x="30" y="75" class="chart-text" text-anchor="end">S/. 5k</text>
+              <text x="30" y="125" class="chart-text" text-anchor="end">S/. 3k</text>
+              <text x="30" y="175" class="chart-text" text-anchor="end">0</text>
+
+              <!-- Connection Line -->
+              <!-- Points calculated based on revenueData: 
+                   Ene (3200): x=75, y=120
+                   Feb (4100): x=155, y=100
+                   Mar (5600): x=235, y=70
+                   Abr (4800): x=315, y=85
+                   May (6200): x=395, y=55
+                   Jun (7500): x=475, y=30
+              -->
+              <path d="M 75 120 L 155 100 L 235 70 L 315 85 L 395 55 L 475 30" 
+                    fill="none" stroke="hsl(142, 76%, 45%)" stroke-width="3" stroke-linecap="round" />
+              
+              <!-- Gradient under the line -->
+              <path d="M 75 170 L 75 120 L 155 100 L 235 70 L 315 85 L 395 55 L 475 30 L 475 170 Z" 
+                    fill="url(#chart-gradient)" opacity="0.15" />
+
+              <!-- Points Dots -->
+              <circle cx="75" cy="120" r="5" fill="#ffffff" stroke="hsl(142, 76%, 45%)" stroke-width="2" />
+              <circle cx="155" cy="100" r="5" fill="#ffffff" stroke="hsl(142, 76%, 45%)" stroke-width="2" />
+              <circle cx="235" cy="70" r="5" fill="#ffffff" stroke="hsl(142, 76%, 45%)" stroke-width="2" />
+              <circle cx="315" cy="85" r="5" fill="#ffffff" stroke="hsl(142, 76%, 45%)" stroke-width="2" />
+              <circle cx="395" cy="55" r="5" fill="#ffffff" stroke="hsl(142, 76%, 45%)" stroke-width="2" />
+              <circle cx="475" cy="30" r="5" fill="#ffffff" stroke="hsl(142, 76%, 45%)" stroke-width="2" />
+
+              <!-- Labels X -->
+              <text x="75" y="195" class="chart-text" text-anchor="middle">Ene</text>
+              <text x="155" y="195" class="chart-text" text-anchor="middle">Feb</text>
+              <text x="235" y="195" class="chart-text" text-anchor="middle">Mar</text>
+              <text x="315" y="195" class="chart-text" text-anchor="middle">Abr</text>
+              <text x="395" y="195" class="chart-text" text-anchor="middle">May</text>
+              <text x="475" y="195" class="chart-text" text-anchor="middle">Jun</text>
+
+              <!-- Gradient Defs -->
+              <defs>
+                <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="hsl(142, 76%, 45%)" />
+                  <stop offset="100%" stop-color="transparent" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 2: Payment Methods -->
+      <div class="card glass chart-card">
+        <div class="card-header">
+          <h3>💳 Canales de Recaudación (Métodos)</h3>
+          <span class="badge">Efectividad</span>
+        </div>
+        <div class="card-body method-chart-body">
+          <div class="methods-list">
+            @for (method of paymentMethods(); track method.method) {
+              <div class="method-row">
+                <div class="method-info">
+                  <span class="method-color-dot" [style.background-color]="method.color"></span>
+                  <span class="method-name">{{ method.method }}</span>
+                  <span class="method-value">S/. {{ method.count }}</span>
+                </div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar-fill" [style.width.%]="method.percentage" [style.background-color]="method.color"></div>
+                  <span class="percentage-label">{{ method.percentage }}%</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 3: Peak Hours of Attendance -->
+    <div class="card glass chart-full-card">
+      <div class="card-header">
+        <h3>🕒 Flujo Horario de Afluencia de Socios</h3>
+        <span class="badge">Visitas Promedio</span>
+      </div>
+      <div class="card-body">
+        <div class="bar-chart-container">
+          @for (bar of attendancePeakHours(); track bar.period) {
+            <div class="bar-col">
+              <div class="bar-fill-wrapper">
+                <div class="bar-fill" [style.height.%]="bar.height" [class.peak-bar]="bar.count > 100">
+                  <span class="bar-count-popup">{{ bar.count }}</span>
+                </div>
+              </div>
+              <span class="bar-label">{{ bar.period }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Movements Feeds -->
+    <div class="feeds-grid">
+      <!-- Recent entries -->
+      <div class="card glass feed-card">
+        <div class="card-header">
+          <h3>🚪 Ingresos de Hoy</h3>
+          <a routerLink="/registro-asistencia" class="action-link">Validar Nuevo</a>
+        </div>
+        <div class="card-body scroll-table-container">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>Socio</th>
+                <th>DNI</th>
+                <th>Hora</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of recentAsistencias(); track entry.fecha_hora) {
+                <tr>
+                  <td class="bold-td">{{ entry.cliente_nombre }} {{ entry.cliente_apellido }}</td>
+                  <td>{{ entry.cliente_dni }}</td>
+                  <td class="text-muted">{{ entry.fecha_hora | date: 'shortTime' }}</td>
+                  <td>
+                    <span class="status-badge" [class.allowed-badge]="entry.acceso_concedido" [class.denied-badge]="!entry.acceso_concedido">
+                      {{ entry.acceso_concedido ? 'PERMITIDO' : 'DENEGADO' }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty-table-text">No hay ingresos registrados hoy.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Recent Payments -->
+      <div class="card glass feed-card">
+        <div class="card-header">
+          <h3>💰 Renovaciones y Pagos Recientes</h3>
+          <a routerLink="/clientes" class="action-link">Cobrar</a>
+        </div>
+        <div class="card-body scroll-table-container">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>Socio</th>
+                <th>Plan</th>
+                <th>Monto</th>
+                <th>Método</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (pago of recentPagos(); track pago.fecha_pago) {
+                <tr>
+                  <td class="bold-td">{{ pago.cliente_nombre ? pago.cliente_nombre + ' ' + pago.cliente_apellido : 'Socio #' + pago.cliente_id }}</td>
+                  <td><span class="plan-badge">{{ pago.membresia_tipo | titlecase }}</span></td>
+                  <td class="amount-td">S/. {{ pago.monto | number: '1.2-2' }}</td>
+                  <td>
+                    <span class="method-badge" [class]="pago.metodo_pago">
+                      {{ pago.metodo_pago | uppercase }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty-table-text">No hay pagos registrados en este período.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+</div>
