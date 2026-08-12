@@ -9,7 +9,9 @@ try {
   // Ignorar si falla
 }
 
-const sqlFilePath = path.join(__dirname, '../database/schema.sql');
+// El backend se despliega con /backend como directorio raiz en Railway, por lo
+// que el esquema debe viajar dentro del mismo contexto de construccion.
+const sqlFilePath = path.join(__dirname, 'schema.sql');
 
 async function run() {
   console.log('📖 Leyendo el archivo schema.sql desde:', sqlFilePath);
