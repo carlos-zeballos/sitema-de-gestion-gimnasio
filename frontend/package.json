@@ -1,6 +1,10 @@
 {
   "name": "crm-gimnasio-frontend",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22.15.0",
+    "npm": ">=10"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
