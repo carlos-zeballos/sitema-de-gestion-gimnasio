@@ -1,0 +1,13 @@
+{
+  "name": "crm-gimnasio-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "build:backend": "cd backend && npm ci",
+    "start:backend": "cd backend && npm start"
+  }
+}
