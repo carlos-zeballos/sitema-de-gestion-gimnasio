@@ -12,13 +12,13 @@ try {
 // El backend se despliega con /backend como directorio raiz en Railway, por lo
 // que el esquema debe viajar dentro del mismo contexto de construccion.
 const sqlFilePath = path.join(__dirname, 'schema.sql');
+const targetDatabase = process.env.DB_NAME || process.env.MYSQLDATABASE || 'crm_gimnasio_gd';
 
 async function run() {
   console.log('📖 Leyendo el archivo schema.sql desde:', sqlFilePath);
   let sqlContent;
   try {
     sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
-    const targetDatabase = process.env.DB_NAME || process.env.MYSQLDATABASE || 'crm_gimnasio_gd';
     if (!/^[a-zA-Z0-9_]+$/.test(targetDatabase)) {
       throw new Error('El nombre de base de datos contiene caracteres no permitidos.');
     }
@@ -78,6 +78,15 @@ async function run() {
   }
 
   try {
+    const [existingTables] = await connection.query(
+      'SELECT COUNT(*) AS total FROM information_schema.tables WHERE table_schema = ?',
+      [targetDatabase]
+    );
+    if (Number(existingTables[0].total) > 0) {
+      console.log(`Base de datos ${targetDatabase} ya inicializada; se conservan sus datos.`);
+      return;
+    }
+
     console.log('\n⚙️  Ejecutando sentencias del esquema SQL...');
     
     // Ejecutar todo el archivo SQL
