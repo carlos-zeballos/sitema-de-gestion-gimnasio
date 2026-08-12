@@ -73,11 +73,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.clientesService.getReportePagos(mes, anio).subscribe({
           next: (resPagos) => {
             let ingresosMes = 0;
-            let paymentsList: any[] = [];
-            
             if (resPagos.success && resPagos.data) {
               ingresosMes = resPagos.data.monto_total || 0;
-              paymentsList = resPagos.data.por_metodo || [];
             }
 
             // Obtener todos los clientes para calcular el total
@@ -199,38 +196,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
   processPaymentMethodsChart(pagos: any[]): void {
     const counts: { [key: string]: number } = { efectivo: 0, yape: 0, plin: 0, otro: 0 };
     pagos.forEach(p => {
-      const met = p.metodo_pago ? p.metodo_pago.toLowerCase() : 'efectivo';
-      if (counts.hasOwnProperty(met)) {
-        counts[met] += p.monto;
-      }
+      const met = String(p.metodo_pago || 'otro').trim().toLowerCase();
+      const method = Object.prototype.hasOwnProperty.call(counts, met) ? met : 'otro';
+      const monto = Number(p.monto);
+
+      if (Number.isFinite(monto)) counts[method] += monto;
     });
 
-    const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    const percentage = (amount: number) => total > 0 ? Math.round((amount / total) * 100) : 0;
     
     this.paymentMethods.set([
-      { method: 'Efectivo', count: counts['efectivo'], percentage: Math.round((counts['efectivo'] / total) * 100), color: '#3b82f6' },
-      { method: 'Yape', count: counts['yape'], percentage: Math.round((counts['yape'] / total) * 100), color: '#00a859' },
-      { method: 'Plin', count: counts['plin'], percentage: Math.round((counts['plin'] / total) * 100), color: '#8b5cf6' },
-      { method: 'Otro', count: counts['otro'], percentage: Math.round((counts['otro'] / total) * 100), color: '#f59e0b' }
+      { method: 'Efectivo', count: counts['efectivo'], percentage: percentage(counts['efectivo']), color: '#3b82f6' },
+      { method: 'Yape', count: counts['yape'], percentage: percentage(counts['yape']), color: '#00a859' },
+      { method: 'Plin', count: counts['plin'], percentage: percentage(counts['plin']), color: '#8b5cf6' },
+      { method: 'Otro', count: counts['otro'], percentage: percentage(counts['otro']), color: '#f59e0b' }
     ]);
   }
 
   fallbackPagos(): void {
-    const hoyStr = new Date().toISOString().split('T')[0];
-    this.recentPagos.set([
-      { cliente_nombre: 'Sofía', cliente_apellido: 'Lozada Flores', cliente_dni: '74567890', monto: 60.00, metodo_pago: 'plin', membresia_tipo: 'mensual', fecha_pago: hoyStr },
-      { cliente_nombre: 'Juan', cliente_apellido: 'Perez Quispe', cliente_dni: '71234567', monto: 90.00, metodo_pago: 'otro', membresia_tipo: 'mensual', fecha_pago: '2026-06-10' },
-      { cliente_nombre: 'Carlos', cliente_apellido: 'Díaz Castro', cliente_dni: '73456789', monto: 60.00, metodo_pago: 'yape', membresia_tipo: 'mensual', fecha_pago: '2026-06-05' },
-      { cliente_nombre: 'María', cliente_apellido: 'Mendoza Ramos', cliente_dni: '72345678', monto: 60.00, metodo_pago: 'efectivo', membresia_tipo: 'mensual', fecha_pago: '2026-06-01' }
-    ]);
-
-    // Métodos de pago académicos
-    this.paymentMethods.set([
-      { method: 'Efectivo', count: 320, percentage: 20, color: '#3b82f6' },
-      { method: 'Yape', count: 720, percentage: 45, color: '#00a859' },
-      { method: 'Plin', count: 400, percentage: 25, color: '#8b5cf6' },
-      { method: 'Otro', count: 160, percentage: 10, color: '#f59e0b' }
-    ]);
+    this.recentPagos.set([]);
+    this.processPaymentMethodsChart([]);
   }
 
   fallbackStats(): void {

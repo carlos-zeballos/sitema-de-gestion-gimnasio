@@ -107,7 +107,7 @@
                 <div class="method-info">
                   <span class="method-color-dot" [style.background-color]="method.color"></span>
                   <span class="method-name">{{ method.method }}</span>
-                  <span class="method-value">S/. {{ method.count }}</span>
+                  <span class="method-value">S/. {{ method.count | number: '1.2-2' }}</span>
                 </div>
                 <div class="progress-bar-container">
                   <div class="progress-bar-fill" [style.width.%]="method.percentage" [style.background-color]="method.color"></div>
