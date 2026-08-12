@@ -468,7 +468,7 @@
 .method-badge.yape { background: rgba(0, 168, 89, 0.1); color: var(--success); }
 .method-badge.plin { background: rgba(139, 92, 246, 0.1); color: #a78bfa; }
 .method-badge.efectivo { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
-.method-badge.transferencia { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
+.method-badge.otro { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
 
 .amount-td {
   font-weight: bold;
