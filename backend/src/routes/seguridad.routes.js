@@ -12,6 +12,7 @@ router.use(requireAdmin);
 
 router.get('/backups', seguridadController.listBackups);
 router.post('/backups', seguridadController.createBackup);
+router.post('/seed-exposicion', seguridadController.seedExhibition);
 router.get('/backups/:file', seguridadController.downloadBackup);
 router.post(
   '/restore',
