@@ -224,15 +224,42 @@ const deleteLogical = async (req, res, next) => {
 
 const changeStatus = async (req, res, next) => {
   const estado = req.body.estado;
+  const motivo = (req.body.motivo || (estado === 'Activo' ? 'Reactivacion administrativa' : 'Baja solicitada por administracion')).trim();
+  const connection = await db.getConnection();
   try {
-    const [rows] = await db.execute('SELECT id, nombre_completo, dni, estado FROM clientes WHERE id = ?', [req.params.id]);
+    await connection.beginTransaction();
+    const [rows] = await connection.execute('SELECT id, nombre_completo, dni, estado FROM clientes WHERE id = ? FOR UPDATE', [req.params.id]);
     if (!rows.length) return response.error(res, 'Cliente no encontrado', 404);
-    await db.execute(
+    if (rows[0].estado === estado) {
+      await connection.rollback();
+      return response.error(res, `El cliente ya se encuentra ${estado}.`, 409);
+    }
+    await connection.execute(
       `UPDATE clientes SET estado = ?, activo = ?, fecha_baja = ${estado === 'Inactivo' ? 'NOW()' : 'NULL'} WHERE id = ?`,
       [estado, estado === 'Activo' ? 1 : 0, req.params.id]
     );
+    await connection.execute(
+      'INSERT INTO clientes_bajas (cliente_id, estado_anterior, estado_nuevo, motivo, registrado_por) VALUES (?, ?, ?, ?, ?)',
+      [req.params.id, rows[0].estado, estado, motivo, req.user.id]
+    );
+    await connection.execute(
+      'INSERT INTO auditoria (usuario_id, accion, detalle) VALUES (?, ?, ?)',
+      [req.user.id, estado === 'Inactivo' ? 'CLIENTE_BAJA' : 'CLIENTE_REACTIVADO', `${rows[0].nombre_completo} (${rows[0].dni}): ${motivo}`]
+    );
+    await connection.commit();
     req.app.get('io')?.emit('cliente:estado', { id: Number(req.params.id), estado });
     return response.success(res, { id: Number(req.params.id), estado }, estado === 'Activo' ? 'Cliente reactivado correctamente.' : 'Cliente dado de baja correctamente.');
+  } catch (err) { await connection.rollback(); next(err); }
+  finally { connection.release(); }
+};
+
+const getStatusHistory = async (req, res, next) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT b.*, u.nombre AS registrado_por_nombre
+      FROM clientes_bajas b INNER JOIN usuarios u ON u.id = b.registrado_por
+      WHERE b.cliente_id = ? ORDER BY b.fecha_baja DESC, b.id DESC`, [req.params.id]);
+    return response.success(res, rows, 'Historial de estados obtenido correctamente.');
   } catch (err) { next(err); }
 };
 
@@ -243,5 +270,6 @@ module.exports = {
   create,
   update,
   delete: deleteLogical,
-  changeStatus
+  changeStatus,
+  getStatusHistory
 };

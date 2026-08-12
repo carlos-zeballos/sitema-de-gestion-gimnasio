@@ -24,10 +24,10 @@ async function run() {
   // Lista de credenciales comunes para probar
   const credentialOptions = [
     {
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: parseInt(process.env.DB_PORT || '3306'),
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || ''
+      host: process.env.DB_HOST || process.env.MYSQLHOST || '127.0.0.1',
+      port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3306'),
+      user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || ''
     },
     {
       host: '127.0.0.1',

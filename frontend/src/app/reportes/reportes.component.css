@@ -102,6 +102,12 @@ select, input {
   border-radius: 8px;
   padding: 14px;
 }
+.clickable { cursor: pointer; }
+.clickable:hover, .clickable:focus { background: #eff6ff; outline: 2px solid #2563eb; outline-offset: -2px; }
+.detail-overlay { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 24px; background: rgba(15,23,42,.65); }
+.detail-modal { width: min(980px, 96vw); max-height: 85vh; overflow: hidden; background: #fff; border-radius: 12px; padding: 20px; }
+.detail-modal header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.detail-scroll { overflow: auto; max-height: 68vh; }
 
 .summary-grid span {
   color: #64748b;

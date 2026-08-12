@@ -34,7 +34,7 @@ const listBackups = async (req, res, next) => {
 };
 
 const createBackup = async (req, res, next) => {
-  const tables = ['roles', 'usuarios', 'clientes', 'membresias', 'pagos', 'asistencias', 'auditoria'];
+  const tables = ['roles', 'usuarios', 'clientes', 'membresias', 'pagos', 'asistencias', 'auditoria', 'clientes_bajas'];
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_');
   const fileName = `backup_crm_gd_madrid_${stamp}.sql`;
   const filePath = path.join(BACKUP_DIR, fileName);

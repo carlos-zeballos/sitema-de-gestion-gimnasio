@@ -25,6 +25,7 @@ const seguridadRoutes = require('./src/routes/seguridad.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const { runMigrations } = require('./src/config/migrations');
 const allowedOrigins = `${process.env.CORS_ORIGIN || ''},http://localhost:4200,http://127.0.0.1:4200`
   .split(',')
   .map((origin) => origin.trim())
@@ -100,12 +101,15 @@ io.on('connection', (socket) => socket.emit('conexion:lista', { conectado: true 
 app.set('io', io);
 
 // Inicializar Servidor
-httpServer.listen(PORT, () => {
+runMigrations().then(() => httpServer.listen(PORT, () => {
   console.log(`===================================================`);
   console.log(`🚀 Servidor CRM Gimnasio GD Madrid iniciado exitosamente.`);
   console.log(`📡 Puerto: ${PORT}`);
   console.log(`⚙️  Entorno: ${process.env.NODE_ENV || 'development'}`);
   console.log(`===================================================`);
+})).catch((err) => {
+  console.error('No se pudieron aplicar las migraciones:', err.message);
+  process.exit(1);
 });
 
 module.exports = { app, httpServer, io };

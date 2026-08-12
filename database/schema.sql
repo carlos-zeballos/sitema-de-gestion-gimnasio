@@ -8,6 +8,7 @@ USE crm_gimnasio_gd;
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS auditoria;
+DROP TABLE IF EXISTS clientes_bajas;
 DROP TABLE IF EXISTS asistencias;
 DROP TABLE IF EXISTS pagos;
 DROP TABLE IF EXISTS membresias;
@@ -25,10 +26,15 @@ CREATE TABLE roles (
 CREATE TABLE usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(120) NOT NULL,
+    email VARCHAR(150) NULL,
     username VARCHAR(8) NOT NULL UNIQUE COMMENT 'max. 8 caracteres',
     correo VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL COMMENT 'hash bcrypt',
     rol_id INT NOT NULL,
+    rol VARCHAR(20) NOT NULL DEFAULT 'recepcion',
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo' COMMENT 'Activo | Inactivo',
     intentos_fallidos INT NOT NULL DEFAULT 0,
     bloqueado_hasta DATETIME NULL,
@@ -45,11 +51,16 @@ CREATE TABLE usuarios (
 CREATE TABLE clientes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre_completo VARCHAR(180) NOT NULL,
+    nombre VARCHAR(80) NOT NULL,
+    apellido VARCHAR(120) NOT NULL,
     dni CHAR(8) NOT NULL UNIQUE COMMENT '8 digitos',
     telefono VARCHAR(20),
     correo VARCHAR(150),
+    email VARCHAR(150),
     fecha_inscripcion DATE NOT NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo' COMMENT 'Activo | Inactivo',
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_baja DATETIME NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_clientes_estado CHECK (estado IN ('Activo', 'Inactivo')),
@@ -64,7 +75,10 @@ CREATE TABLE membresias (
     tipo VARCHAR(20) NOT NULL COMMENT 'semanal | quincenal | mensual',
     fecha_inicio DATE NOT NULL,
     fecha_vencimiento DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
     estado VARCHAR(30) NOT NULL DEFAULT 'Activa' COMMENT 'calculado: Activa | Proxima_a_vencer | Vencida',
+    monto_pagado DECIMAL(10,2) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_membresias_clientes FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT,
     CONSTRAINT chk_membresias_tipo CHECK (tipo IN ('semanal', 'quincenal', 'mensual')),
@@ -84,6 +98,8 @@ CREATE TABLE pagos (
     tipo_membresia VARCHAR(20) NOT NULL,
     fecha_vencimiento_generada DATE NOT NULL,
     registrado_por INT NOT NULL,
+    observacion VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_pagos_clientes FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT,
     CONSTRAINT fk_pagos_membresias FOREIGN KEY (membresia_id) REFERENCES membresias(id) ON DELETE SET NULL,
@@ -100,6 +116,9 @@ CREATE TABLE asistencias (
     fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     registrado_por INT NOT NULL,
     estado_membresia_al_ingreso VARCHAR(30) NOT NULL,
+    acceso_concedido TINYINT(1) NOT NULL DEFAULT 1,
+    observacion VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_asistencias_clientes FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT,
     CONSTRAINT fk_asistencias_usuarios FOREIGN KEY (registrado_por) REFERENCES usuarios(id) ON DELETE RESTRICT,
     INDEX idx_asistencias_fecha (fecha_hora),
@@ -117,6 +136,19 @@ CREATE TABLE auditoria (
     INDEX idx_auditoria_accion (accion)
 ) ENGINE=InnoDB;
 
+CREATE TABLE clientes_bajas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    estado_anterior VARCHAR(20) NOT NULL,
+    estado_nuevo VARCHAR(20) NOT NULL,
+    motivo VARCHAR(255) NOT NULL,
+    registrado_por INT NOT NULL,
+    fecha_baja DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_bajas_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_bajas_usuario FOREIGN KEY (registrado_por) REFERENCES usuarios(id) ON DELETE RESTRICT,
+    INDEX idx_bajas_cliente_fecha (cliente_id, fecha_baja)
+) ENGINE=InnoDB;
+
 -- Seeds de roles
 INSERT INTO roles (nombre_rol, descripcion) VALUES
 ('Administrador', 'Acceso completo a administracion, reportes y configuracion'),
@@ -130,18 +162,18 @@ INSERT INTO usuarios (nombre, username, correo, password_hash, rol_id, estado) V
 ('Recepcionista Turno Tarde', 'recep', 'recepcion@gym.com', '$2a$10$hIrAIx/xhcDwRTbLy.IdQu9eJh1VPNx/8oxpBdH9e4TT2R2pxhcC6', 2, 'Activo'),
 ('Entrenador Principal', 'trainer', 'entrenador@gym.com', '$2a$10$MZ0zt/YLoT4QLSB6pHO2AetU3thx5oyt4icSfR.7LxSy8KJCvDZSO', 3, 'Activo');
 
-INSERT INTO clientes (nombre_completo, dni, telefono, correo, fecha_inscripcion, estado) VALUES
-('Juan Perez Quispe', '71234567', '958473621', 'juan.perez@email.com', '2026-06-08', 'Activo'),
-('Maria Mendoza Ramos', '72345678', '948372615', 'maria.mendoza@email.com', '2026-06-10', 'Activo'),
-('Carlos Diaz Castro', '73456789', '938271604', 'carlos.diaz@email.com', '2026-06-15', 'Activo'),
-('Sofia Lozada Flores', '74567890', '928170593', 'sofia.lozada@email.com', '2026-07-01', 'Activo'),
-('Luis Torres Benavente', '75678901', '918069482', 'luis.torres@email.com', '2026-07-05', 'Inactivo');
+INSERT INTO clientes (nombre, apellido, nombre_completo, dni, telefono, correo, email, fecha_inscripcion, estado, activo) VALUES
+('Juan', 'Perez Quispe', 'Juan Perez Quispe', '71234567', '958473621', 'juan.perez@email.com', 'juan.perez@email.com', '2026-06-08', 'Activo', 1),
+('Maria', 'Mendoza Ramos', 'Maria Mendoza Ramos', '72345678', '948372615', 'maria.mendoza@email.com', 'maria.mendoza@email.com', '2026-06-10', 'Activo', 1),
+('Carlos', 'Diaz Castro', 'Carlos Diaz Castro', '73456789', '938271604', 'carlos.diaz@email.com', 'carlos.diaz@email.com', '2026-06-15', 'Activo', 1),
+('Sofia', 'Lozada Flores', 'Sofia Lozada Flores', '74567890', '928170593', 'sofia.lozada@email.com', 'sofia.lozada@email.com', '2026-07-01', 'Activo', 1),
+('Luis', 'Torres Benavente', 'Luis Torres Benavente', '75678901', '918069482', 'luis.torres@email.com', 'luis.torres@email.com', '2026-07-05', 'Inactivo', 0);
 
-INSERT INTO membresias (cliente_id, tipo, fecha_inicio, fecha_vencimiento, estado) VALUES
-(1, 'mensual', '2026-06-08', '2026-07-08', 'Proxima_a_vencer'),
-(2, 'mensual', '2026-06-10', '2026-07-10', 'Proxima_a_vencer'),
-(3, 'quincenal', '2026-06-15', '2026-06-30', 'Vencida'),
-(4, 'semanal', '2026-07-01', '2026-07-08', 'Proxima_a_vencer');
+INSERT INTO membresias (cliente_id, tipo, fecha_inicio, fecha_fin, fecha_vencimiento, estado) VALUES
+(1, 'mensual', '2026-06-08', '2026-07-08', '2026-07-08', 'Proxima_a_vencer'),
+(2, 'mensual', '2026-06-10', '2026-07-10', '2026-07-10', 'Proxima_a_vencer'),
+(3, 'quincenal', '2026-06-15', '2026-06-30', '2026-06-30', 'Vencida'),
+(4, 'semanal', '2026-07-01', '2026-07-08', '2026-07-08', 'Proxima_a_vencer');
 
 INSERT INTO pagos (cliente_id, membresia_id, monto, fecha_pago, metodo_pago, tipo_membresia, fecha_vencimiento_generada, registrado_por) VALUES
 (1, 1, 90.00, '2026-06-08', 'yape', 'mensual', '2026-07-08', 1),
