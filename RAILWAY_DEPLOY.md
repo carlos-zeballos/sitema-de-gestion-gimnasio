@@ -20,7 +20,7 @@ Variables:
 
 Generar dominio público y configurar health check `/health`. Al arrancar, el backend crea la tabla incremental `clientes_bajas` sin borrar datos.
 
-Para una base vacía, abrir una shell del servicio backend y ejecutar **una sola vez** `npm run db:init`. Este comando crea el esquema y los usuarios semilla; es destructivo y no debe repetirse sobre una base con datos.
+Para el primer despliegue sobre una base vacía, configurar temporalmente el Start Command como `npm run db:init && npm start`. Cuando el backend quede activo, cambiar inmediatamente el Start Command a `npm start` y redeployar. `db:init` usa `MYSQLDATABASE`, crea el esquema y usuarios semilla, pero es destructivo y no debe repetirse sobre una base con datos.
 
 ## 3. Frontend
 

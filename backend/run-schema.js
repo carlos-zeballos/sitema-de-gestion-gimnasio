@@ -16,6 +16,11 @@ async function run() {
   let sqlContent;
   try {
     sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
+    const targetDatabase = process.env.DB_NAME || process.env.MYSQLDATABASE || 'crm_gimnasio_gd';
+    if (!/^[a-zA-Z0-9_]+$/.test(targetDatabase)) {
+      throw new Error('El nombre de base de datos contiene caracteres no permitidos.');
+    }
+    sqlContent = sqlContent.replace(/crm_gimnasio_gd/g, targetDatabase);
   } catch (err) {
     console.error('❌ No se pudo leer el archivo schema.sql:', err.message);
     process.exit(1);
