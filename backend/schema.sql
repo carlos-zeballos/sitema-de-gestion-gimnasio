@@ -158,9 +158,9 @@ INSERT INTO roles (nombre_rol, descripcion) VALUES
 -- Passwords de prueba:
 -- admin123 / recepcion123 / entrenador123
 INSERT INTO usuarios (nombre, username, correo, password_hash, rol_id, estado) VALUES
-('Administrador General', 'admin', 'admin@gym.com', '$2a$10$ZpuS47E/YmLvh5P9RfpzoOYZZ0.SsNTFPCtNWHmz9OLeZ6wBclMGy', 1, 'Activo'),
-('Recepcionista Turno Tarde', 'recep', 'recepcion@gym.com', '$2a$10$hIrAIx/xhcDwRTbLy.IdQu9eJh1VPNx/8oxpBdH9e4TT2R2pxhcC6', 2, 'Activo'),
-('Entrenador Principal', 'trainer', 'entrenador@gym.com', '$2a$10$MZ0zt/YLoT4QLSB6pHO2AetU3thx5oyt4icSfR.7LxSy8KJCvDZSO', 3, 'Activo');
+('Administrador General', 'admin', 'admin@gym.com', '$2a$10$I5FcxiSEE9l41x.nHpv0VelJrkxBDDYDSsY0M3a/awFzkoDkgl.b6', 1, 'Activo'),
+('Recepcionista Turno Tarde', 'recep', 'recepcion@gym.com', '$2a$10$ZtKsiKP6LcMaWcib790izep6JacUfNj/3NNRUbS6D/lxd4Fy/.McC', 2, 'Activo'),
+('Entrenador Principal', 'trainer', 'entrenador@gym.com', '$2a$10$0Y2afhJkoxJnTCkD/gk38uQbCKBCgDjMrHbUafX6rW8mmgDyDP.c2', 3, 'Activo');
 
 INSERT INTO clientes (nombre, apellido, nombre_completo, dni, telefono, correo, email, fecha_inscripcion, estado, activo) VALUES
 ('Juan', 'Perez Quispe', 'Juan Perez Quispe', '71234567', '958473621', 'juan.perez@email.com', 'juan.perez@email.com', '2026-06-08', 'Activo', 1),
