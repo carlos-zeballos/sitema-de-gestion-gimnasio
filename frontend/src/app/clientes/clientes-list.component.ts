@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit, inject, signal, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ClientesService, Cliente, Pago, Asistencia } from '../core/services/clientes.service';
+import { ClientesService, Cliente, Pago, Asistencia, BajaCliente } from '../core/services/clientes.service';
 import { AuthService } from '../core/services/auth.service';
 import { NavbarComponent } from '../shared/navbar/navbar.component';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
@@ -40,6 +40,7 @@ export class ClientesListComponent implements OnInit, OnDestroy {
   selectedCliente: Cliente | null = null;
   clientPagos = signal<Pago[]>([]);
   clientAsistencias = signal<Asistencia[]>([]);
+  clientBajas = signal<BajaCliente[]>([]);
 
   // Forms Binding Models
   clientForm = {
@@ -54,6 +55,7 @@ export class ClientesListComponent implements OnInit, OnDestroy {
     tipo_membresia: 'mensual' as 'semanal' | 'quincenal' | 'mensual',
     monto: 90.00,
     metodo_pago: 'yape' as 'efectivo' | 'yape' | 'plin' | 'otro',
+    fecha_pago: new Date().toISOString().slice(0, 10),
     observacion: ''
   };
 
@@ -67,6 +69,7 @@ export class ClientesListComponent implements OnInit, OnDestroy {
   isLoading = signal(false);
   errorMessage = signal('');
   successMessage = signal('');
+  today = new Date().toISOString().slice(0, 10);
 
   ngOnInit(): void {
     this.loadClientes();
@@ -254,9 +257,10 @@ export class ClientesListComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm(`¿Está seguro de que desea dar de baja al socio ${cliente.nombre} ${cliente.apellido}?`)) {
+    const motivo = prompt(`Motivo de baja para ${cliente.nombre} ${cliente.apellido} (DNI ${cliente.dni}):`);
+    if (motivo && motivo.trim().length >= 3 && confirm(`¿Confirmar la baja de ${cliente.nombre} ${cliente.apellido}, DNI ${cliente.dni}?`)) {
       this.isLoading.set(true);
-      this.clientesService.delete(cliente.id).subscribe({
+      this.clientesService.cambiarEstado(cliente.id, 'Inactivo', motivo.trim()).subscribe({
         next: (res) => {
           this.isLoading.set(false);
           if (res.success) {
@@ -277,11 +281,18 @@ export class ClientesListComponent implements OnInit, OnDestroy {
   // =================================================================
 
   openRenewModal(cliente: Cliente): void {
+    if (!['Vencida', 'Proxima_a_vencer'].includes(cliente.membresia_estado || '')) {
+      this.errorMessage.set(cliente.membresia_estado === 'Activa'
+        ? `No se puede cobrar: la membresía está activa hasta ${cliente.membresia_fin}.`
+        : 'No se puede renovar: el cliente aún no tiene una membresía vencida o próxima a vencer.');
+      return;
+    }
     this.selectedCliente = cliente;
     this.renewForm = {
       tipo_membresia: 'mensual',
       monto: 90.00,
       metodo_pago: 'yape',
+      fecha_pago: new Date().toISOString().slice(0, 10),
       observacion: ''
     };
     this.errorMessage.set('');
@@ -309,6 +320,7 @@ export class ClientesListComponent implements OnInit, OnDestroy {
       monto: this.renewForm.monto,
       metodo_pago: this.renewForm.metodo_pago,
       tipo_membresia: this.renewForm.tipo_membresia,
+      fecha_pago: this.renewForm.fecha_pago,
       observacion: this.renewForm.observacion.trim() || undefined
     };
 
@@ -337,6 +349,7 @@ export class ClientesListComponent implements OnInit, OnDestroy {
     this.selectedCliente = cliente;
     this.clientPagos.set([]);
     this.clientAsistencias.set([]);
+    this.clientBajas.set([]);
     this.showDetailModal = true;
     
     // Obtener historial de pagos
@@ -356,6 +369,11 @@ export class ClientesListComponent implements OnInit, OnDestroy {
         }
       }
     });
+    if (this.currentUser()?.rol === 'admin') {
+      this.clientesService.getHistorialBajas(cliente.id).subscribe({
+        next: res => { if (res.success) this.clientBajas.set(res.data); }
+      });
+    }
   }
 
   // Helpers

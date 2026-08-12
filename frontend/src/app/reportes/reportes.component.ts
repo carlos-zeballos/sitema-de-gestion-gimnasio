@@ -21,6 +21,7 @@ export class ReportesComponent {
   errorMessage = signal('');
   ingresos = signal<any | null>(null);
   retencion = signal<any | null>(null);
+  selectedDetail = signal<{ title: string; rows: any[] } | null>(null);
 
   meses = [
     { value: 1, label: 'Enero' },
@@ -62,5 +63,19 @@ export class ReportesComponent {
 
   print(): void {
     window.print();
+  }
+
+  showIncomeDetail(tipo?: string): void {
+    const data = this.ingresos();
+    if (!data) return;
+    const rows = tipo ? data.pagos.filter((p: any) => p.tipo_membresia === tipo) : data.pagos;
+    this.selectedDetail.set({ title: tipo ? `Pagos de membresía ${tipo}` : 'Detalle de todos los pagos', rows });
+  }
+
+  showRetentionDetail(estado: 'Activo' | 'Inactivo'): void {
+    const data = this.retencion();
+    if (!data) return;
+    const rows = estado === 'Inactivo' ? data.clientes_inactivos : data.clientes_activos;
+    this.selectedDetail.set({ title: `Detalle de clientes ${estado.toLowerCase()}s`, rows });
   }
 }

@@ -16,6 +16,11 @@ async function run() {
   let sqlContent;
   try {
     sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
+    const targetDatabase = process.env.DB_NAME || process.env.MYSQLDATABASE || 'crm_gimnasio_gd';
+    if (!/^[a-zA-Z0-9_]+$/.test(targetDatabase)) {
+      throw new Error('El nombre de base de datos contiene caracteres no permitidos.');
+    }
+    sqlContent = sqlContent.replace(/crm_gimnasio_gd/g, targetDatabase);
   } catch (err) {
     console.error('❌ No se pudo leer el archivo schema.sql:', err.message);
     process.exit(1);
@@ -24,10 +29,10 @@ async function run() {
   // Lista de credenciales comunes para probar
   const credentialOptions = [
     {
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: parseInt(process.env.DB_PORT || '3306'),
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || ''
+      host: process.env.DB_HOST || process.env.MYSQLHOST || '127.0.0.1',
+      port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3306'),
+      user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || ''
     },
     {
       host: '127.0.0.1',

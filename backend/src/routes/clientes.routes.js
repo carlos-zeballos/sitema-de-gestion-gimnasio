@@ -37,10 +37,11 @@ router.get(
 
 router.get('/', clientesController.getAll);
 router.get('/:id', clientesController.getById);
+router.get('/:id/bajas', requireAdmin, clientesController.getStatusHistory);
 
 router.post('/', [requireAdmin, ...clienteValidators, validate], clientesController.create);
 router.put('/:id', [requireAdmin, ...clienteValidators, validate], clientesController.update);
-router.patch('/:id/estado', [requireAdmin, body('estado').isIn(['Activo', 'Inactivo']), validate], clientesController.changeStatus);
+router.patch('/:id/estado', [requireAdmin, body('estado').isIn(['Activo', 'Inactivo']), body('motivo').optional().trim().isLength({ min: 3, max: 255 }), validate], clientesController.changeStatus);
 router.delete('/:id', requireAdmin, clientesController.delete);
 
 module.exports = router;

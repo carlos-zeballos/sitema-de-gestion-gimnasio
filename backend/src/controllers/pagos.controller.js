@@ -12,12 +12,27 @@ const crear = async (req, res, next) => {
     await connection.beginTransaction();
 
     const [clientes] = await connection.execute(
-      'SELECT id FROM clientes WHERE id = ? AND estado = "Activo"',
+      `SELECT c.id, m.id AS membresia_id, m.fecha_vencimiento,
+              CASE WHEN m.id IS NULL THEN 'Sin_membresia'
+                   WHEN m.fecha_vencimiento < CURDATE() THEN 'Vencida'
+                   WHEN m.fecha_vencimiento <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 'Proxima_a_vencer'
+                   ELSE 'Activa' END AS membresia_estado
+       FROM clientes c
+       LEFT JOIN membresias m ON m.id = (SELECT id FROM membresias WHERE cliente_id = c.id ORDER BY creado_en DESC, id DESC LIMIT 1)
+       WHERE c.id = ? AND c.estado = 'Activo' FOR UPDATE`,
       [cliente_id]
     );
     if (clientes.length === 0) {
       await connection.rollback();
       return response.error(res, 'Cliente no encontrado o inactivo.', 404);
+    }
+
+    if (!['Vencida', 'Proxima_a_vencer'].includes(clientes[0].membresia_estado)) {
+      await connection.rollback();
+      const message = clientes[0].membresia_estado === 'Sin_membresia'
+        ? 'El cliente aun no tiene una membresia vencida o proxima a vencer.'
+        : `La membresia sigue activa hasta ${String(clientes[0].fecha_vencimiento).slice(0, 10)}. Solo puede renovarse cuando este vencida o proxima a vencer.`;
+      return response.error(res, message, 409);
     }
 
     await connection.execute(

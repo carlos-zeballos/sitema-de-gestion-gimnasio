@@ -70,6 +70,7 @@ const validateSchema = async () => {
     pagos: ['id', 'cliente_id', 'membresia_id', 'monto', 'fecha_pago', 'metodo_pago', 'tipo_membresia', 'fecha_vencimiento_generada', 'registrado_por', 'creado_en'],
     asistencias: ['id', 'cliente_id', 'fecha_hora', 'registrado_por', 'estado_membresia_al_ingreso'],
     auditoria: ['id', 'usuario_id', 'accion', 'detalle', 'fecha_hora']
+    ,clientes_bajas: ['id', 'cliente_id', 'estado_anterior', 'estado_nuevo', 'motivo', 'registrado_por', 'fecha_baja']
   };
 
   for (const [table, cols] of Object.entries(required)) {
@@ -125,6 +126,14 @@ const run = async () => {
     const partialSearch = await request(`/clientes/search?q=${dni.slice(2, 6)}`, { token });
     record('HU11', 'Busqueda parcial por DNI', partialSearch.res.status === 200 && partialSearch.body?.data?.some((c) => c.id === clienteId), `HTTP ${partialSearch.res.status}`);
 
+    const noMembershipPayment = await request('/pagos', {
+      method: 'POST', token, body: { cliente_id: clienteId, monto: 90, metodo_pago: 'yape', tipo_membresia: 'mensual' }
+    });
+    record('HU14/HU15', 'Bloquea pago a cliente sin membresia vencida', noMembershipPayment.res.status === 409, `HTTP ${noMembershipPayment.res.status}`);
+    const [[expiredScenario]] = await db.execute("SELECT id FROM clientes WHERE dni = '80000003'");
+    const [[upcomingScenario]] = await db.execute("SELECT id FROM clientes WHERE dni = '80000002'");
+    const pagoClienteId = expiredScenario.id;
+
     const socket = io('http://127.0.0.1:3000', { auth: { token }, transports: ['websocket'] });
     const websocketEvent = new Promise((resolve) => {
       const timer = setTimeout(() => resolve(null), 3000);
@@ -134,18 +143,21 @@ const run = async () => {
     const pago = await request('/pagos', {
       method: 'POST',
       token,
-      body: { cliente_id: clienteId, monto: 90, metodo_pago: 'yape', tipo_membresia: 'mensual' }
+      body: { cliente_id: pagoClienteId, monto: 90, metodo_pago: 'yape', tipo_membresia: 'mensual' }
     });
     record('HU10/HU11/HU12', 'Registrar pago y generar membresia', pago.res.status === 201 && !!pago.body?.data?.membresia?.fecha_vencimiento, `HTTP ${pago.res.status}`);
     const wsPayload = await websocketEvent;
-    record('HU15/HU20', 'WebSocket backend-frontend emite pago:registrado', wsPayload?.cliente_id === clienteId, wsPayload ? `Evento para cliente ${wsPayload.cliente_id}` : 'Sin evento');
+    record('HU15/HU20', 'WebSocket backend-frontend emite pago:registrado', wsPayload?.cliente_id === pagoClienteId, wsPayload ? `Evento para cliente ${wsPayload.cliente_id}` : 'Sin evento');
     socket.close();
 
+    const duplicateActivePayment = await request('/pagos', { method: 'POST', token, body: { cliente_id: pagoClienteId, monto: 90, metodo_pago: 'yape', tipo_membresia: 'mensual' } });
+    record('HU14/HU15', 'Bloquea renovacion si membresia continua activa', duplicateActivePayment.res.status === 409, `HTTP ${duplicateActivePayment.res.status}`);
+
     const futureDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    const futurePago = await request('/pagos', { method: 'POST', token, body: { cliente_id: clienteId, monto: 90, metodo_pago: 'yape', tipo_membresia: 'mensual', fecha_pago: futureDate } });
+    const futurePago = await request('/pagos', { method: 'POST', token, body: { cliente_id: upcomingScenario.id, monto: 90, metodo_pago: 'yape', tipo_membresia: 'mensual', fecha_pago: futureDate } });
     record('HU14', 'Rechaza fecha de pago futura', [400, 422].includes(futurePago.res.status), `HTTP ${futurePago.res.status}`);
 
-    const history = await request(`/pagos/${clienteId}?fechaInicio=${new Date().toISOString().slice(0, 10)}&fechaFin=${new Date().toISOString().slice(0, 10)}`, { token });
+    const history = await request(`/pagos/${pagoClienteId}?fechaInicio=${new Date().toISOString().slice(0, 10)}&fechaFin=${new Date().toISOString().slice(0, 10)}`, { token });
     record('HU16', 'Historial filtra rango inclusivo', history.res.status === 200 && history.body?.data?.length >= 1, `HTTP ${history.res.status}, registros ${history.body?.data?.length ?? 0}`);
     const invalidRange = await request(`/pagos/${clienteId}?fechaInicio=2026-08-12&fechaFin=2026-08-01`, { token });
     record('HU16', 'Rechaza rango de fechas invertido', [400, 422].includes(invalidRange.res.status), `HTTP ${invalidRange.res.status}`);
@@ -153,11 +165,13 @@ const run = async () => {
     const deactivate = await request(`/clientes/${clienteId}/estado`, { method: 'PATCH', token, body: { estado: 'Inactivo' } });
     const reactivate = await request(`/clientes/${clienteId}/estado`, { method: 'PATCH', token, body: { estado: 'Activo' } });
     record('HU13', 'Baja logica y reactivacion mediante PATCH', deactivate.res.status === 200 && reactivate.res.status === 200, `HTTP ${deactivate.res.status}/${reactivate.res.status}`);
+    const bajas = await request(`/clientes/${clienteId}/bajas`, { token });
+    record('HU13', 'Baja genera historial con motivo y responsable', bajas.res.status === 200 && bajas.body?.data?.length >= 2 && bajas.body.data.every((row) => row.motivo && row.registrado_por_nombre), `HTTP ${bajas.res.status}, eventos ${bajas.body?.data?.length ?? 0}`);
 
     const asistencia = await request('/asistencias', {
       method: 'POST',
       token,
-      body: { cliente_id: clienteId }
+      body: { cliente_id: pagoClienteId }
     });
     record('HU09', 'Registrar asistencia con membresia vigente', asistencia.res.status === 201 && asistencia.body?.data?.acceso_concedido === true, `HTTP ${asistencia.res.status}`);
 
@@ -175,7 +189,7 @@ const run = async () => {
     const mes = new Date().getMonth() + 1;
     const anio = new Date().getFullYear();
     const ingresos = await request(`/reportes/ingresos?mes=${mes}&anio=${anio}`, { token });
-    record('HU21', 'Reporte mensual de ingresos', ingresos.res.status === 200 && Array.isArray(ingresos.body?.data?.desglose), `HTTP ${ingresos.res.status}`);
+    record('HU21', 'Reporte mensual de ingresos con detalle navegable', ingresos.res.status === 200 && Array.isArray(ingresos.body?.data?.desglose) && Array.isArray(ingresos.body?.data?.pagos), `HTTP ${ingresos.res.status}, detalles ${ingresos.body?.data?.pagos?.length ?? 0}`);
     const sum = (ingresos.body?.data?.desglose || []).reduce((total, row) => total + Number(row.subtotal), 0);
     record('HU21', 'Suma de subtotales coincide con total', Math.abs(sum - Number(ingresos.body?.data?.monto_total || 0)) < 0.001, `Subtotal ${sum}, total ${ingresos.body?.data?.monto_total}`);
 

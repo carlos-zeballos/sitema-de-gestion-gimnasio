@@ -48,6 +48,16 @@ export interface Pago {
   observacion?: string;
 }
 
+export interface BajaCliente {
+  id: number;
+  cliente_id: number;
+  estado_anterior: string;
+  estado_nuevo: string;
+  motivo: string;
+  registrado_por_nombre: string;
+  fecha_baja: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   statusCode: number;
@@ -123,8 +133,12 @@ export class ClientesService {
     return this.http.get<ApiResponse<Pago[]>>(`${this.baseApiUrl}/pagos/${clienteId}${query ? `?${query}` : ''}`);
   }
 
-  cambiarEstado(id: number, estado: 'Activo' | 'Inactivo'): Observable<ApiResponse<{ id: number; estado: string }>> {
-    return this.http.patch<ApiResponse<{ id: number; estado: string }>>(`${this.baseApiUrl}/clientes/${id}/estado`, { estado });
+  cambiarEstado(id: number, estado: 'Activo' | 'Inactivo', motivo: string): Observable<ApiResponse<{ id: number; estado: string }>> {
+    return this.http.patch<ApiResponse<{ id: number; estado: string }>>(`${this.baseApiUrl}/clientes/${id}/estado`, { estado, motivo });
+  }
+
+  getHistorialBajas(id: number): Observable<ApiResponse<BajaCliente[]>> {
+    return this.http.get<ApiResponse<BajaCliente[]>>(`${this.baseApiUrl}/clientes/${id}/bajas`);
   }
 
   getPagosPorMes(mes: number, anio: number): Observable<ApiResponse<Pago[]>> {

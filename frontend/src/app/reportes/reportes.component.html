@@ -46,7 +46,7 @@
         </header>
 
         <div class="summary-grid">
-          <article>
+          <article class="clickable" (click)="showIncomeDetail()" tabindex="0">
             <span>Total de pagos</span>
             <strong>{{ data.total_pagos }}</strong>
           </article>
@@ -69,7 +69,7 @@
             </thead>
             <tbody>
               @for (row of data.desglose; track row.tipo) {
-                <tr>
+                <tr class="clickable" (click)="showIncomeDetail(row.tipo)">
                   <td>{{ row.tipo | titlecase }}</td>
                   <td>{{ row.cantidad }}</td>
                   <td>S/. {{ row.subtotal | number:'1.2-2' }}</td>
@@ -103,11 +103,11 @@
             <span>Total historico</span>
             <strong>{{ data.total_clientes }}</strong>
           </article>
-          <article>
+          <article class="clickable" (click)="showRetentionDetail('Activo')" tabindex="0">
             <span>Activos</span>
             <strong>{{ data.activos }}</strong>
           </article>
-          <article>
+          <article class="clickable" (click)="showRetentionDetail('Inactivo')" tabindex="0">
             <span>Inactivos</span>
             <strong>{{ data.inactivos }}</strong>
           </article>
@@ -152,3 +152,27 @@
     </section>
   }
 </main>
+
+@if (selectedDetail(); as detail) {
+  <div class="detail-overlay no-print" (click)="selectedDetail.set(null)">
+    <section class="detail-modal" (click)="$event.stopPropagation()">
+      <header><h2>{{ detail.title }}</h2><button class="btn secondary" (click)="selectedDetail.set(null)">Cerrar</button></header>
+      <div class="detail-scroll">
+        <table>
+          <thead><tr><th>ID/DNI</th><th>Cliente</th><th>Fecha</th><th>Tipo/Método</th><th>Monto/Teléfono</th></tr></thead>
+          <tbody>
+            @for (row of detail.rows; track row.id) {
+              <tr>
+                <td>{{ row.id || row.dni }}</td>
+                <td>{{ row.nombre_completo }}</td>
+                <td>{{ row.fecha_pago || row.ultimo_pago || '-' }}</td>
+                <td>{{ row.tipo_membresia || row.metodo_pago || 'Cliente inactivo' }}</td>
+                <td>{{ row.monto != null ? ('S/. ' + (row.monto | number:'1.2-2')) : (row.telefono || '-') }}</td>
+              </tr>
+            } @empty { <tr><td colspan="5" class="empty">No hay registros para este detalle.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+}

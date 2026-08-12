@@ -106,7 +106,7 @@
                     <button class="btn btn-action btn-info-action" (click)="openDetailModal(cli)" title="Ver Ficha y Movimientos">
                       👁️ Ficha
                     </button>
-                    <button class="btn btn-action btn-pay-action" (click)="openRenewModal(cli)" title="Registrar Pago / Renovación">
+                    <button class="btn btn-action btn-pay-action" (click)="openRenewModal(cli)" [disabled]="cli.membresia_estado !== 'Vencida' && cli.membresia_estado !== 'Proxima_a_vencer'" title="Solo disponible para membresías vencidas o próximas a vencer">
                       💰 Cobrar
                     </button>
                     <button class="btn btn-action btn-edit-action" (click)="openEditModal(cli)" title="Editar datos del Socio">
@@ -167,6 +167,7 @@
               <input type="email" id="c-email" [(ngModel)]="clientForm.email" class="input-control" placeholder="ejemplo@correo.com" />
             </div>
           </div>
+
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" (click)="showCreateModal = false">Cancelar</button>
@@ -263,6 +264,11 @@
             <div class="form-group">
               <label for="r-monto">Monto Cobrado (S/.) <span class="required">*</span></label>
               <input type="number" id="r-monto" [(ngModel)]="renewForm.monto" class="input-control" />
+            </div>
+
+            <div class="form-group">
+              <label for="r-fecha">Fecha de inicio de membresía <span class="required">*</span></label>
+              <input type="date" id="r-fecha" [(ngModel)]="renewForm.fecha_pago" [max]="today" class="input-control" />
             </div>
 
             <div class="form-group">
@@ -413,6 +419,20 @@
               </div>
             </div>
           </div>
+
+          @if (currentUser()?.rol === 'admin') {
+            <div class="ficha-table-wrapper">
+              <h4>Historial de bajas y reactivaciones</h4>
+              <div class="tab-table-container"><table class="ficha-inner-table">
+                <thead><tr><th>Fecha</th><th>Cambio</th><th>Motivo</th><th>Responsable</th></tr></thead>
+                <tbody>
+                  @for (baja of clientBajas(); track baja.id) {
+                    <tr><td>{{ baja.fecha_baja | date:'short' }}</td><td>{{ baja.estado_anterior }} → {{ baja.estado_nuevo }}</td><td>{{ baja.motivo }}</td><td>{{ baja.registrado_por_nombre }}</td></tr>
+                  } @empty { <tr><td colspan="4">Sin cambios de estado registrados.</td></tr> }
+                </tbody>
+              </table></div>
+            </div>
+          }
 
         </div>
         <div class="modal-footer">

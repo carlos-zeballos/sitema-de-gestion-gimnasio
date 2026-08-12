@@ -13,7 +13,9 @@ export class RealtimeService {
     const token = this.auth.getToken();
     if (!token) return undefined;
     if (!this.socket) {
-      const origin = environment.apiUrl.replace(/\/api\/?$/, '');
+      const origin = environment.apiUrl.startsWith('http')
+        ? environment.apiUrl.replace(/\/api\/?$/, '')
+        : window.location.origin;
       this.socket = io(origin, { auth: { token }, transports: ['websocket'] });
     }
     return this.socket;

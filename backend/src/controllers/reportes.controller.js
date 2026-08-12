@@ -97,6 +97,12 @@ const getIngresos = async (req, res, next) => {
        ORDER BY FIELD(tipo_membresia, 'semanal', 'quincenal', 'mensual')`,
       [mes, anio]
     );
+    const [paymentRows] = await db.execute(`
+      SELECT p.id, p.fecha_pago, p.monto, p.metodo_pago, p.tipo_membresia,
+             p.fecha_vencimiento_generada, c.id AS cliente_id, c.nombre_completo, c.dni
+      FROM pagos p INNER JOIN clientes c ON c.id = p.cliente_id
+      WHERE MONTH(p.fecha_pago) = ? AND YEAR(p.fecha_pago) = ?
+      ORDER BY p.fecha_pago DESC, p.id DESC`, [mes, anio]);
 
     return response.success(res, {
       gimnasio: 'GD Madrid S.A.',
@@ -109,7 +115,8 @@ const getIngresos = async (req, res, next) => {
         tipo: row.tipo,
         cantidad: row.cantidad,
         subtotal: parseFloat(row.subtotal)
-      }))
+      })),
+      pagos: paymentRows.map((row) => ({ ...row, monto: parseFloat(row.monto) }))
     }, 'Reporte mensual de ingresos generado correctamente.');
   } catch (err) {
     next(err);
@@ -146,6 +153,13 @@ const getRetencion = async (req, res, next) => {
       GROUP BY c.id, c.nombre_completo, c.dni, c.telefono
       ORDER BY c.nombre_completo ASC
     `, [periodDate]);
+    const [activosRows] = await db.execute(`
+      SELECT c.id, c.nombre_completo, c.dni, c.telefono,
+             COALESCE(MAX(p.fecha_pago), 'Sin pagos') AS ultimo_pago
+      FROM clientes c LEFT JOIN pagos p ON p.cliente_id = c.id
+      WHERE c.estado = 'Activo' AND c.fecha_inscripcion <= LAST_DAY(?)
+      GROUP BY c.id, c.nombre_completo, c.dni, c.telefono
+      ORDER BY c.nombre_completo ASC`, [periodDate]);
 
     return response.success(res, {
       gimnasio: 'GD Madrid S.A.',
@@ -157,7 +171,8 @@ const getRetencion = async (req, res, next) => {
       inactivos: summary.inactivos,
       porcentaje_retencion: porcentaje,
       formula: '(Clientes Activos / Total de Clientes) x 100',
-      clientes_inactivos: inactivosRows
+      clientes_inactivos: inactivosRows,
+      clientes_activos: activosRows
     }, 'Reporte de retencion generado correctamente.');
   } catch (err) {
     next(err);
